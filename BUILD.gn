@@ -14,5 +14,7 @@
 import("//build/lite/config/component/lite_component.gni")
 
 lite_component("app") {
-  features = [ "mutex_demo:mutex_demo", ]
+    features = [
+        "iottencent_demo:appDemoIot",
+    ]
 }
