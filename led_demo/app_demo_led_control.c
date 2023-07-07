@@ -24,13 +24,47 @@
 
 #define IOT_GPIO_IDX_10 10 // for hispark_pegasus
 
+// static void *LedCntrolDemo(const char *arg)
+// {
+//     printf("origin LedTask start\r\n");
+//     (void)arg;
+//     // 配置GPIO引脚号和输出值
+//     while(1){
+//         IoTGpioSetOutputVal(IOT_GPIO_IDX_10, IOT_GPIO_VALUE1);
+//         TaskMsleep(1000);
+//         IoTGpioSetOutputVal(IOT_GPIO_IDX_10, IOT_GPIO_VALUE0);
+//         TaskMsleep(1000);
+//         printf("origin LedTask running\r\n");
+//     }
+
+
+// }
+
+//GPIO模拟PWM波
+#define FRE 50
+#define DUTY 10
+
 static void *LedCntrolDemo(const char *arg)
 {
-    (void)arg;
+    static int i = 0;
     printf("LedTask start\r\n");
-    // 配置GPIO引脚号和输出值
-    IoTGpioSetOutputVal(IOT_GPIO_IDX_10, IOT_GPIO_VALUE1);
-    return NULL;
+    while(1){
+        i++;
+        int interval = 1000 / FRE;
+        //高电平
+        int time =(int)interval * DUTY / 100;
+        IoTGpioSetOutputVal(IOT_GPIO_IDX_10, IOT_GPIO_VALUE1);
+        TaskMsleep(time);
+        //低电平
+        time = interval - time;
+        IoTGpioSetOutputVal(IOT_GPIO_IDX_10, IOT_GPIO_VALUE0);
+        TaskMsleep(time);
+        if (i >= 100) {
+            i = 0;
+            printf("LedTask running,interval:%d, low_time:%d\r\n", interval, time);
+        }
+
+    }
 }
 
 static void LedControlTask(void)
