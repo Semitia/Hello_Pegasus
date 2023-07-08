@@ -38,10 +38,12 @@
 #define WECHAT_SUBSCRIBE_LIGHT              "light"
 #define WECHAT_SUBSCRIBE_LIGHT_ON_STATE     "1"
 #define WECHAT_SUBSCRIBE_LIGHT_OFF_STATE    "0"
-#define WECHAT_SUBSCRIBE_SERVO             "servo"
+#define WECHAT_SUBSCRIBE_FEED              "feed"
+#define WECHAT_SUBSCRIBE_FEED_ON_STATE      "101"
+#define WECHAT_SUBSCRIBE_FEED_OFF_STATE     "100"
 
-static int servo_angle[3] = {0, 0, 0};
-
+static float servo_duty[3] = {7.5, 7.5, 7.5};//1.5ms,中间位置
+static hi_bool feed_cmd = HI_FALSE;
 int g_ligthStatus = -1;
 typedef void (*FnMsgCallBack)(hi_gpio_value val);
 
@@ -81,6 +83,30 @@ static void wechatControlDeviceMsg(hi_gpio_value val)
     DeviceConfigInit(val);
 }
 
+static void servo_feed(void)
+{
+    printf ("servo feed task start\n");
+    while(1)
+    {
+        if(!feed_cmd)
+        {
+            TaskMsleep(1000);
+            return;
+        } 
+        printf("start to feed\n");
+        servo_duty[0] = 12;
+        servo_duty[1] = 12;
+        servo_duty[2] = 12;
+        TaskMsleep(1000);
+        servo_duty[0] = 7.5;
+        servo_duty[1] = 7.5;
+        servo_duty[2] = 7.5;
+        feed_cmd = HI_FALSE;
+        printf("feed done\n");
+    }
+
+}
+
 // < this is the callback function, set to the mqtt, and if any messages come, it will be called
 // < The payload here is the json string
 static void DemoMsgRcvCallBack(int qos, const char *topic, const char *payload)
@@ -101,22 +127,37 @@ static void DemoMsgRcvCallBack(int qos, const char *topic, const char *payload)
         }
     }
 
-    //寻找servo对应的字符串
-    char *p= strstr(payload, WECHAT_SUBSCRIBE_SERVO);
-    if(p != NULL)
-    {
-        p += strlen(WECHAT_SUBSCRIBE_SERVO)+1;
-        char num[4];
-        num[3] = '\0';
-        strncpy (num, p, 3);
-        servo_angle[0] = atoi(num);
-        strncpy (num, p+3, 3);
-        servo_angle[1] = atoi(num);
-        strncpy (num, p+6, 3);
-        servo_angle[2] = atoi(num);
-        printf("servo0:%d servo1:%d servo2:%d\n", servo_angle[0], servo_angle[1], servo_angle[2]);
-    }
+    // //寻找servo对应的字符串
+    // char *p= strstr(payload, WECHAT_SUBSCRIBE_SERVO);
+    // if(p != NULL)
+    // {
+    //     p += strlen(WECHAT_SUBSCRIBE_SERVO)+1;
+    //     char num[4];
+    //     num[3] = '\0';
+    //     strncpy (num, p, 3);
+    //     servo_angle[0] = atoi(num);
+    //     strncpy (num, p+3, 3);
+    //     servo_angle[1] = atoi(num);
+    //     strncpy (num, p+6, 3);
+    //     servo_angle[2] = atoi(num);
+    //     printf("servo0:%d servo1:%d servo2:%d\n", servo_angle[0], servo_angle[1], servo_angle[2]);
+    // }
 
+    //寻找喂食指令
+    char *p= strstr(payload, WECHAT_SUBSCRIBE_FEED);
+    if(p!=NULL)
+    {
+        if(strstr(payload,WECHAT_SUBSCRIBE_FEED_ON_STATE)!=NULL)
+        {
+            feed_cmd = HI_TRUE;
+            printf("feed on\n");
+        }
+        else
+        {
+            feed_cmd = HI_FALSE;
+            printf("feed off\n");
+        }
+    }
 
     return HI_NULL;
 }
@@ -157,6 +198,7 @@ hi_void IotPublishSample(void)
         weChatProfile.reportAction.lightActionStatus = 0; /* 0: light off */
     }
     /* profile report */
+    printf("User_ID:%s\nUser_passward:%s\n", CONFIG_USER_ID, CONFIG_USER_PWD);
     IoTProfilePropertyReport(CONFIG_USER_ID, &weChatProfile);
 }
 
@@ -186,37 +228,34 @@ static hi_void *DemoEntry(const char *arg)
 #define CN_IOT_TASK_PRIOR 25
 #define CN_IOT_TASK_NAME "IOTDEMO"
 
-// < here we define the servo control pins
+// < here we define the servo control pins, GPIO模拟PWM
 #define SERVO_TASK_STACKSIZE  1024
-
-//servo0-pwm0
-#define servo0_PWMport 0
-#define servo0_GPIO 9
-//servo1-pwm1
-#define servo1_PWMport 4
-#define servo1_GPIO 1
-//servo2-pwm2
-#define servo2_PWMport 2
-#define servo2_GPIO 2
 #define FREQUENCY 50
+#define SERVO0_GPIO_10 10
+#define SERVO1_GPIO_1 1
+#define SERVO2_GPIO_2 2
+
 
 //servo control function
-static void *Servo_Task(const char *arg)
+static void *Servo0_Task(const char *arg)
 {
-    unsigned short servo_occupation[3] = {0, 0, 0};
-    for (int i = 0; i < 3; i++) {
-        servo_occupation[i] = servo_angle[i] * 1000 / 180 + 500;
-    }
+    printf("servo0 task start\n");
+    static int i = 0;
+    int interval = 1000000/FREQUENCY;
     while (1) {
-        // IoTPwmStart(servo0_PWMport, servo_occupation[0], FREQUENCY);
-        // IoTPwmStart(servo1_PWMport, servo_occupation[1], FREQUENCY);
-        // IoTPwmStart(servo2_PWMport, servo_occupation[2], FREQUENCY);
-        IoTPwmStart(servo0_PWMport, 80, FREQUENCY);
-        IoTPwmStart(servo1_PWMport, 80, FREQUENCY);
-        IoTPwmStart(servo2_PWMport, 80, FREQUENCY);
-        TaskMsleep(ONE_SECOND);
+        int time = (int) (interval * servo_duty[0] / 100);
+        IoTGpioSetDir(SERVO0_GPIO_10, IOT_GPIO_DIR_OUT);
+        IoTGpioSetOutputVal(SERVO0_GPIO_10, IOT_GPIO_VALUE1);
+        hi_udelay(time);
+        time = interval - time;
+        IoTGpioSetOutputVal(SERVO0_GPIO_10, IOT_GPIO_VALUE0);
+        hi_udelay(time);
+        if (i >= 100) {
+            i = 0;
+            printf("hi_delay LedTask running,interval:%d, high_time:%d\r\n", interval, interval-time);
+        }
     }
-    return NULL;
+
 }
 
 static void AppDemoIot(void)
@@ -224,6 +263,7 @@ static void AppDemoIot(void)
     osThreadAttr_t attr;
     IoTWatchDogDisable();
 
+    //IOT INIT
     attr.name = "IOTDEMO";
     attr.attr_bits = 0U;
     attr.cb_mem = NULL;
@@ -236,31 +276,36 @@ static void AppDemoIot(void)
         printf("[mqtt] Falied to create IOTDEMO!\n");
     }
 
-    // //GPIO INIT
-    // IoTGpioInit(servo0_GPIO);
-    // IoTGpioInit(servo1_GPIO);
-    // IoTGpioInit(servo2_GPIO);
-    // IoSetFunc(servo0_GPIO, 5); /* 设置IO5的功能 */
-    // IoSetFunc(servo1_GPIO, IOT_IO_FUNC_GPIO_10_PWM1_OUT);
-    // IoSetFunc(servo2_GPIO, IOT_IO_FUNC_GPIO_2_PWM2_OUT);
-    // IoTGpioSetDir(servo0_GPIO, IOT_GPIO_DIR_OUT);
-    // IoTGpioSetDir(servo1_GPIO, IOT_GPIO_DIR_OUT);
-    // IoTGpioSetDir(servo2_GPIO, IOT_GPIO_DIR_OUT);
-    // IoTPwmInit(servo0_PWMport);
-    // IoTPwmInit(servo1_PWMport);
-    // IoTPwmInit(servo2_PWMport);
+    //喂食线程
+    attr.name = "feed";
+    attr.attr_bits = 0U;
+    attr.cb_mem = NULL;
+    attr.cb_size = 0U;
+    attr.stack_mem = NULL;
+    attr.stack_size = 1024;
+    attr.priority = osPriorityNormal;
+    if (osThreadNew((osThreadFunc_t)servo_feed, NULL, &attr) == NULL) {
+        printf("[servo] Falied to create servo0!\n");
+    }
 
-    // < here we create a task to control the servo
-    attr.name = "servo_control";
+    //SERVO0 INIT
+    IoTGpioInit(SERVO0_GPIO_10);
+    IoTGpioSetDir(SERVO0_GPIO_10, IOT_GPIO_DIR_OUT);
+    attr.name = "servo0";
     attr.attr_bits = 0U;
     attr.cb_mem = NULL;
     attr.cb_size = 0U;
     attr.stack_mem = NULL;
     attr.stack_size = SERVO_TASK_STACKSIZE;
     attr.priority = osPriorityNormal;
-    if (osThreadNew((osThreadFunc_t)Servo_Task, NULL, &attr) == NULL) {
-        printf("[servo] Falied to create servo_control!\n");
+    if (osThreadNew((osThreadFunc_t)Servo0_Task, NULL, &attr) == NULL) {
+        printf("[servo] Falied to create servo0!\n");
     }
+
+    //SERVO1 INIT
+
+
+
 
 
 }

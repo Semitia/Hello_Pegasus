@@ -25,7 +25,7 @@
 #define CONFIG_AP_SSID  "realme GT" // WIFI SSID
 #define CONFIG_AP_PWD   "u12138138" // WIFI PWD
 /* Tencent iot Cloud user ID , password */
-#define CONFIG_USER_ID    "GNJOUT1LQ6Board1;12010126;3dbc8;1696262400"
-#define CONFIG_USER_PWD   "aca079b94b1ffb06d1266cc0a4dad8696471bbdebf7c2226f7f448f0011d4f45;hmacsha256"
+#define CONFIG_USER_ID    "GNJOUT1LQ6Board1;12010126;65e60;1696435200"
+#define CONFIG_USER_PWD   "939202e1c6a8e103e853799f7378dbc8a727cedcc00fcb7939184fa2a66ff958;hmacsha256"
 #define CN_CLIENTID     "GNJOUT1LQ6Board1" // Tencent cloud ClientID format: Product ID + device name
 #endif

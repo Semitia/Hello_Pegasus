@@ -15,8 +15,8 @@ import("//build/lite/config/component/lite_component.gni")
 
 lite_component("app") {
     features = [
-#        "fish:fish",
-        "beep_demo:beepDemo",
+        "fish:fish",
+#        "beep_demo:beepDemo",
 #        "led_demo:ledDemo"
 #        "robot:robot_demo"
     ]

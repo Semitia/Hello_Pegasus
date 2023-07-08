@@ -304,7 +304,7 @@ int IotSendMsg(int qos, const char *topic, const char *payload)
         msg->payload = buf;
         IOT_LOG_DEBUG("SNDMSG:QOS:%d TOPIC:%s PAYLOAD:%s\r\n", msg->qos, msg->topic, msg->payload);
         if (IOT_SUCCESS != osMessageQueuePut(gIoTAppCb.queueID, &msg, 0, CN_QUEUE_WAITTIMEOUT)) {
-            IOT_LOG_ERROR("Write queue failed\r\n");
+            IOT_LOG_ERROR("Write queue failed,  %d\r\n",osMessageQueuePut(gIoTAppCb.queueID, &msg, 0, CN_QUEUE_WAITTIMEOUT));
             hi_free(0, msg);
         } else {
             rc = 0;
